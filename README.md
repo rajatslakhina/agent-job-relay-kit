@@ -10,7 +10,7 @@ Agent work is moving off the device. A research or coding agent now runs for min
 
 `AgentJobRelay` is the client half of that system: a Swift package with a pure reducer, an actor that orchestrates it, and a seeded end-to-end simulator that proves the two agree with the server under drop, duplicate, reorder and process death.
 
-> Demo app: (added after the companion repo is pushed)
+> **Demo app:** [agent-job-relay-demo-app](https://github.com/rajatslakhina/agent-job-relay-demo-app) is a SwiftUI dashboard that consumes this package as a remote dependency (Up to Next Major from 1.0.0) and runs three agent jobs over a lossy stream, with kill-and-relaunch and cancel.
 
 ## Why this matters
 
@@ -118,4 +118,9 @@ let view = await relay.projection(of: id)   // state, status, ledger
 
 ## Verification
 
-_Written after CI reports._
+- **Locally** (Swift 6.0.3, Linux): a clean `swift build -Xswiftc -warnings-as-errors` succeeds, and `swift test` runs 61 tests with 0 failures.
+- **Mutation-checked.** The load-bearing invariants were deliberately broken one at a time to confirm a test fails each time. The invariants covered: persisting the key before sending, claiming the key before suspending, the coalesced go-again pass, epoch fencing, retire-after-fetch, the beyond-window fetch, the budget boundary, cancel dedupe and retry, unconfirmed downgrade, the FIFO lock and pruning order. An independent reviewer also ran its own mutants. Two of its mutants survived. One was the page bound, which now has a test. The other was `resume()`'s explicit cancel re-send, which is redundant: the probe fetch re-sends the cancel anyway.
+- **CI**: [GitHub Actions](https://github.com/rajatslakhina/agent-job-relay-kit/actions) runs two jobs on every push to `main`, and both passed on the release commit:
+  - **Linux** (`swift:6.0` container): `swift build -Xswiftc -warnings-as-errors`, then `swift test`.
+  - **macOS 15**: the same build and test, then `xcodebuild build -scheme AgentJobRelay -destination 'generic/platform=iOS Simulator'`.
+- **The demo app compiles against the released v1.0.0 in its own CI. It has not been run on a Simulator.** Computer-use access was granted, but Xcode already had someone else's unrelated project open, and the run does not click through other people's work. No screenshots exist.
